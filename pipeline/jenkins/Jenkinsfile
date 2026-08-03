@@ -12,7 +12,7 @@ pipeline {
         GITOPS_REPO = "github.com/srinutechguru/srinu-devsecops-pipeline.git"
         
         // Slack Configuration
-        SLACK_CHANNEL = "#devsecops-alerts"
+        SLACK_CHANNEL = "#all-srinutechguru"
     }
 
     stages {
