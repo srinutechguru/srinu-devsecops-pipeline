@@ -1,11 +1,11 @@
 pipeline {
     agent any 
+    
     tools {
         maven 'maven3'
         jdk 'jdk21'
     }
-    
-    
+
     environment {
         // DockerHub configuration (Uses your srinutechguru account)
         DOCKERHUB_CREDS = credentials('dockerhub-credentials-id') 
@@ -17,7 +17,7 @@ pipeline {
         GITOPS_REPO = "github.com/srinutechguru/srinu-devsecops-pipeline.git"
         
         // Slack Configuration
-        SLACK_CHANNEL = "dev"
+        SLACK_CHANNEL = "#devsecops-alerts"
     }
 
     stages {
@@ -60,7 +60,7 @@ pipeline {
                     --scan ./src
                     --format "ALL"
                     --failOnCVSS 7.0
-                ''', installer: 'Default'
+                ''', odcInstallation: 'Default'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
