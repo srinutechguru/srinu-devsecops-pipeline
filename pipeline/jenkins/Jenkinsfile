@@ -1,6 +1,11 @@
 pipeline {
     agent any 
-
+    tools {
+        maven 'maven3'
+        jdk 'jdk21'
+    }
+    
+    
     environment {
         // DockerHub configuration (Uses your srinutechguru account)
         DOCKERHUB_CREDS = credentials('dockerhub-credentials-id') 
@@ -12,7 +17,7 @@ pipeline {
         GITOPS_REPO = "github.com/srinutechguru/srinu-devsecops-pipeline.git"
         
         // Slack Configuration
-        SLACK_CHANNEL = "#all-srinutechguru"
+        SLACK_CHANNEL = "dev"
     }
 
     stages {
