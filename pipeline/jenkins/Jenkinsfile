@@ -1,0 +1,126 @@
+pipeline {
+    agent any 
+
+    environment {
+        // DockerHub configuration (Uses your srinutechguru account)
+        DOCKERHUB_CREDS = credentials('dockerhub-credentials-id') 
+        IMAGE_NAME = "srinutechguru/devsecops-app" 
+        IMAGE_TAG = "v${BUILD_NUMBER}" 
+        
+        // GitHub GitOps Repository configuration (Uses your srinutechguru account)
+        GITHUB_CREDS = credentials('github-token-id')
+        GITOPS_REPO = "github.com/srinutechguru/srinu-devsecops-pipeline.git"
+        
+        // Slack Configuration
+        SLACK_CHANNEL = "#devsecops-alerts"
+    }
+
+    stages {
+        stage('1. Checkout Code') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "🚀 *STARTING:* Job ${env.JOB_NAME} [Build #${env.BUILD_NUMBER}] - Pulling source code from GitHub...")
+                checkout scm
+            }
+        }
+
+        stage('2. Build & Test') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "🛠️ *STAGE 2:* Compiling Node.js code and running Unit Tests...")
+                dir('src') {
+                    sh 'npm install'
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('3. SonarQube Code Analysis') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "🔍 *STAGE 3:* Running SonarQube Static Application Security Testing (SAST)...")
+                script {
+                    def scannerHome = tool 'SonarQubeScanner'
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh "${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=devsecops-app \
+                            -Dsonar.sources=src/"
+                    }
+                }
+            }
+        }
+
+        stage('4. OWASP Dependency Check') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "📦 *STAGE 4:* Scanning third-party NPM libraries using OWASP Dependency Check...")
+                dependencyCheck additionalArguments: '''
+                    --project "devsecops-app"
+                    --scan ./src
+                    --format "ALL"
+                    --failOnCVSS 7.0
+                ''', installer: 'Default'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+
+        stage('5. Docker Build') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "🐳 *STAGE 5:* Building Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}...")
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f docker/Dockerfile ."
+            }
+        }
+
+        stage('6. Trivy Vulnerability Scan') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "🛡️ *STAGE 6:* X-Ray Scanning Docker Image with Trivy for CRITICAL CVEs...")
+                sh "trivy image --exit-code 1 --severity CRITICAL ${IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('7. Push to DockerHub') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "☁️ *STAGE 7:* Pushing secure image to DockerHub repository: srinutechguru...")
+                sh "echo \$DOCKERHUB_CREDS_PSW | docker login -u \$DOCKERHUB_CREDS_USR --password-stdin"
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
+                sh "docker push ${IMAGE_NAME}:latest"
+            }
+        }
+
+        stage('8. Update Helm Values (GitOps)') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "⚙️ *STAGE 8:* Updating Helm values.yaml with new image tag ${IMAGE_TAG}...")
+                sh "git clone https://${GITHUB_CREDS_USR}:${GITHUB_CREDS_PSW}@${GITOPS_REPO} gitops-repo"
+                
+                dir('gitops-repo/helm-chart') {
+                    sh "sed -i 's/tag: .*/tag: \"${IMAGE_TAG}\"/' values.yaml"
+                }
+            }
+        }
+        
+        stage('9. Commit & Push to GitHub') {
+            steps {
+                slackSend(color: '#439FE0', channel: SLACK_CHANNEL, message: "✅ *STAGE 9:* Committing changes to GitOps repo. Argo CD will now deploy to AWS EKS!")
+                dir('gitops-repo') {
+                    sh "git config user.name 'Jenkins CI'"
+                    sh "git config user.email 'jenkins@srinutechguru.com'"
+                    sh "git add helm-chart/values.yaml"
+                    sh "git commit -m 'Update image tag to ${IMAGE_TAG} via Jenkins CI'"
+                    sh "git push origin HEAD:main" 
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            slackSend(color: 'good', channel: SLACK_CHANNEL, message: "🎉 *SUCCESS:* Pipeline completed flawlessly! Version ${IMAGE_TAG} is live on AWS EKS. <${env.BUILD_URL}|Click here to view logs.>")
+        }
+        failure {
+            slackSend(color: 'danger', channel: SLACK_CHANNEL, message: "🚨 *FAILURE:* Pipeline stopped! Job ${env.JOB_NAME} [Build #${env.BUILD_NUMBER}] encountered an error. <${env.BUILD_URL}|Click here to view the console output.>")
+        }
+        always {
+            echo 'Pipeline execution complete.'
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            sh "rm -rf gitops-repo || true"
+            cleanWs()
+        }
+    }
+}

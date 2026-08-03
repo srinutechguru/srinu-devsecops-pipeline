@@ -1,0 +1,13 @@
+# This tells Kubernetes exactly which image to pull and how many copies to run.
+replicaCount: 2
+
+image:
+  repository: srinutechguru/devsecops-app
+  pullPolicy: Always
+  # This tag is what Jenkins will update automatically!
+  tag: "v1" 
+
+service:
+  type: LoadBalancer # Exposes the app to the internet
+  port: 80
+  targetPort: 3000

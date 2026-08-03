@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devsecops-masterclass-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # UPDATED: Points to your exact GitHub repository URL
+    repoURL: 'https://github.com/srinutechguru/srinu-devsecops-pipeline.git'
+    path: 'k8s-manifests/helm-chart'
+    targetRevision: HEAD
+  destination:
+    # Deploys to the cluster where Argo CD is currently running
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true     # Automatically deletes old resources if removed from Git
+      selfHeal: true  # If someone manually changes K8s, Argo forces it back to match Git!
