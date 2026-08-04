@@ -1,5 +1,5 @@
 # Step 1: Use a modern, secure LTS base image (Node 22 Alpine)
-FROM node:22-alpine
+FROM node:24-alpine
 
 # Step 2: Update Alpine OS packages to ensure all system patches are applied
 RUN apk update && apk upgrade --no-cache
