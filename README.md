@@ -2,33 +2,30 @@
 #srinu-devsecops-nodejs-project
 
 srinu-devsecops-pipeline/
-├── .gitignore                          # Prevents sensitive files (passwords/modules) from going to GitHub
-├── setup_project.sh                    # The automation script to create this exact folder structure
-│
-├── src/                                # PHASE 1: Application Source Code
+├── .gitignore
+├── setup_project.sh
+├── sonar-project.properties
+├── README.md
+├── src/
 │   ├── app/
-│   │   └── main.js                     # The Node.js web server logic
+│   │   └── main.js
 │   ├── tests/
-│   │   └── app.test.js                 # Unit tests to validate the app works before building
-│   └── package.json                    # Node.js dependencies and run commands
-│
-├── docker/                             # PHASE 1: Containerization
-│   └── Dockerfile                      # Instructions to pack the app securely for DockerHub (srinurkt)
-│
-├── pipeline/                           # PHASE 1: CI/CD Automation
+│   │   └── app.test.js
+│   └── package.json
+├── docker/
+│   └── Dockerfile
+├── pipeline/
 │   └── jenkins/
-│       └── Jenkinsfile                 # The "Brains" - Automates building, SAST, OWASP, Trivy, and pushing
-│
-└── k8s-manifests/                      # PHASE 2: Kubernetes & GitOps (AWS EKS Target)
+│       └── Jenkinsfile
+└── k8s-manifests/
     ├── argocd/
-    │   └── application.yaml            # Tells Argo CD to watch GitHub and sync to AWS EKS
+    │   └── application.yaml
     └── helm-chart/
-        ├── Chart.yaml                  # Helm configuration and versioning
-        ├── values.yaml                 # The "Control Center" - Jenkins updates the image tag here!
+        ├── Chart.yaml
+        ├── values.yaml
         └── templates/
-            ├── deployment.yaml         # Tells EKS how many Pods to run using the srinurkt image
-            └── service.yaml            # Tells EKS to create an AWS Load Balancer to route traffic
-
+            ├── deployment.yaml
+            └── service.yaml
 
 Deploy this exclusively on Amazon Elastic Kubernetes Service (AWS EKS), here is how the files we just created interact with the AWS Cloud:
 
