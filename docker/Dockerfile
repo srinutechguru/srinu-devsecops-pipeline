@@ -11,7 +11,7 @@ WORKDIR /usr/src/app
 COPY src/package*.json ./
 
 # Step 5: Install exact production dependencies securely
-RUN npm install --omit=dev
+RUN npm install 
 
 # Step 6: Copy the rest of the application code
 COPY src/ .
