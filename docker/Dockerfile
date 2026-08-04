@@ -1,6 +1,9 @@
 # Step 1: Use a small, secure base image
 FROM node:18-alpine
 
+# Step 1.1: Update Alpine OS packages to patch vulnerabilities (like OpenSSL CVEs)
+RUN apk update && apk upgrade --no-cache
+
 # Step 2: Set the working directory inside the container
 WORKDIR /usr/src/app
 
@@ -8,7 +11,8 @@ WORKDIR /usr/src/app
 COPY src/package*.json ./
 
 # Step 4: Install exactly what is needed for production (Security best practice)
-RUN npm install --only=production
+# (Using --omit=dev clears up the npm warning from previous builds)
+RUN npm install --omit=dev
 
 # Step 5: Copy the rest of the application code
 COPY src/ .
