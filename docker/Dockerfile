@@ -1,26 +1,26 @@
-# Step 1: Use a modern, secure LTS base image (Node 22 Alpine)
-FROM node:22-alpine
+FROM node:22.23.2-alpine3.24
 
-# Step 2: Update Alpine OS packages to ensure all system patches are applied
-RUN apk update && apk upgrade --no-cache
+# Set production runtime
+ENV NODE_ENV=production
 
-# Step 3: Set the working directory inside the container
+# Create app directory
 WORKDIR /usr/src/app
 
-# Step 4: Copy only the package files first (Optimizes Docker layer caching)
-COPY src/package*.json ./
+# Copy dependency manifests first for better layer caching
+COPY --chown=node:node src/package*.json ./
 
-# Step 5: Install exact production dependencies securely
-RUN npm install 
+# Install only production dependencies in a deterministic way
+RUN npm ci --omit=dev --no-audit --no-fund \
+    && npm cache clean --force
 
-# Step 6: Copy the rest of the application code
-COPY src/ .
+# Copy application source with proper ownership
+COPY --chown=node:node src/ ./
 
-# Step 7: Security Best Practice! Run as a restricted non-root user
-USER node
+# Drop privileges
+USER 1000
 
-# Step 8: Open the port the app uses
+# Application port
 EXPOSE 3000
 
-# Step 9: The command to run when the container starts
-CMD ["npm", "start"]
+# Start app directly instead of through npm when possible
+CMD ["node", "server.js"]
